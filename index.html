@@ -84,6 +84,7 @@ tr.row-item:hover{background:var(--panel-strong);}
   <div class="toolbar">
     <input class="search" id="search" placeholder="Buscar por nome, e-mail ou cidade...">
     <button class="btn" id="btn-refresh">↻ Atualizar</button>
+    <button class="btn" id="btn-token">🔑 Trocar código de acesso</button>
   </div>
   <div id="list-host"></div>
 </div>
@@ -321,6 +322,12 @@ document.getElementById('overlay').addEventListener('click', (e)=>{
 
 document.getElementById('search').addEventListener('input', e=>renderList(e.target.value));
 document.getElementById('btn-refresh').addEventListener('click', async ()=>{
+  await loadIndex();
+  renderStats();
+  renderList(document.getElementById('search').value);
+});
+document.getElementById('btn-token').addEventListener('click', async ()=>{
+  localStorage.removeItem('admin_token');
   await loadIndex();
   renderStats();
   renderList(document.getElementById('search').value);
