@@ -62,6 +62,11 @@ tr.row-item:hover{background:var(--panel-strong);}
 .qa .a{font-size:14px;line-height:1.5;}
 .qa .a.empty-a{color:var(--muted-2);font-style:italic;}
 .list-chip{display:inline-block;background:rgba(63,227,161,.1);border:1px solid rgba(63,227,161,.25);color:var(--mint);border-radius:8px;padding:2px 9px;font-size:12px;margin:2px 4px 2px 0;}
+.risk-chip{display:inline-block;border-radius:8px;padding:3px 10px;font-size:12px;font-weight:600;white-space:nowrap;}
+.risk-chip.conservador{background:rgba(93,169,255,.12);border:1px solid rgba(93,169,255,.3);color:#8fbcff;}
+.risk-chip.moderado{background:rgba(240,180,60,.12);border:1px solid rgba(240,180,60,.32);color:#f0c25f;}
+.risk-chip.arrojado{background:rgba(239,106,106,.1);border:1px solid rgba(239,106,106,.3);color:#ef8a8a;}
+.risk-chip.indefinido{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);color:var(--muted);}
 .mini-item{border:1px solid var(--line-soft);border-radius:10px;padding:8px 10px;margin-bottom:6px;font-size:13px;}
 .flag{display:inline-flex;align-items:center;gap:6px;background:rgba(239,106,106,.1);border:1px solid rgba(239,106,106,.3);color:#ef8a8a;border-radius:8px;padding:4px 10px;font-size:12px;margin-bottom:10px;}
 .loading{text-align:center;padding:60px;color:var(--muted);}
@@ -93,7 +98,7 @@ document.querySelectorAll('img.avatar').forEach(img=>{ img.src = 'data:image/jpe
 
 // Cole aqui a URL do Google Apps Script publicado (termina em /exec)
 const CONFIG = {
-  APPS_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbwkDtxaiplv4Eb5qnQiAizhEcVhXDrCRIblFwgH4_ZP2eOMturcJei-bdioBcj8XK0/exec'
+  APPS_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbyiuoMeMKpyjaNnmj7aUtPn2VNKPgxk-CJDzzaQIvw2WNkqW09hdwP9F1leadsHFZYh4w/exec'
 };
 
 let allSubmissions = []; // full detail cache {summary + answers}
@@ -165,12 +170,13 @@ function renderList(filterTerm=''){
     return;
   }
   host.innerHTML = `<div class="table-wrap"><table>
-    <thead><tr><th>Cliente</th><th>Cidade</th><th>Recebido em</th></tr></thead>
+    <thead><tr><th>Cliente</th><th>Cidade</th><th>Perfil de risco</th><th>Recebido em</th></tr></thead>
     <tbody>
       ${items.map(s=>`
         <tr class="row-item" data-id="${s.id}">
           <td class="name-cell"><b>${escapeHtml(s.nome||'(sem nome)')}</b><span>${escapeHtml(s.email||'')}</span></td>
           <td>${escapeHtml(s.cidade||'—')}</td>
+          <td>${riskChip(s.perfilRiscoClassificacao, s.perfilRiscoNota)}</td>
           <td>${formatDate(s.createdAt)}</td>
         </tr>`).join('')}
     </tbody>
@@ -178,6 +184,14 @@ function renderList(filterTerm=''){
   host.querySelectorAll('.row-item').forEach(row=>{
     row.addEventListener('click', ()=>openDetail(row.dataset.id));
   });
+}
+
+function riskChip(classificacao, nota){
+  const map = { 'Conservador':'conservador', 'Moderado':'moderado', 'Arrojado':'arrojado' };
+  const cls = map[classificacao] || 'indefinido';
+  const label = classificacao ? classificacao : 'Não informado';
+  const notaTxt = (nota!==undefined && nota!==null && nota!=='') ? ` (${nota}/10)` : '';
+  return `<span class="risk-chip ${cls}">${escapeHtml(label)}${notaTxt}</span>`;
 }
 
 function formatDate(iso){
@@ -194,11 +208,11 @@ const SECTIONS = [
     conf_rentabilidade:'Entendeu que nenhum profissional pode prometer rentabilidade?',
     conf_risco:'Entendeu que todo investimento envolve risco?'
   }},
-  {title:'Dados pessoais', keys:['nome','nascimento','estado_civil','regime_bens','profissao','empresa','renda','cidade','email']},
+  {title:'Dados pessoais', keys:['nome','nascimento','estado_civil','profissao','empresa','renda','cidade','email']},
   {title:'Momento de vida', keys:['mv_casar','mv_filhos_qtd','mv_mais_filhos','mv_imovel','mv_imovel_prazo','mv_aposentadoria','mv_mudar_pais','mv_carreira','mv_vender_empresa','mv_heranca','mv_vender_imovel']},
   {title:'Organização financeira', keys:['org_controle','org_sabe_gasto','org_sobra','org_sobra_valor','org_dividas','org_dividas_tipo','org_dividas_juros','org_rotativo']},
   {title:'Patrimônio', keys:['patrimonio_itens']},
-  {title:'Fluxo financeiro', keys:['fluxo_renda_fixa','fluxo_variavel','fluxo_variavel_valor','fluxo_bonus','fluxo_bonus_valor','fluxo_passiva','fluxo_passiva_valor','fluxo_despesas','fluxo_aporte','fluxo_conforto']},
+  {title:'Fluxo financeiro', keys:['fluxo_regime_trabalho','fluxo_renda_fixa','fluxo_variavel','fluxo_variavel_valor','fluxo_bonus','fluxo_bonus_valor','fluxo_passiva','fluxo_passiva_valor','fluxo_despesas','fluxo_aporte','fluxo_conforto']},
   {title:'Reserva de emergência', keys:['reserva_possui','reserva_onde','reserva_meses','reserva_usou']},
   {title:'Experiência com investimentos', keys:['exp_ja_investiu','exp_onde','exp_produtos','exp_prejuizo','exp_prejuizo_desc','exp_ruim','exp_ruim_desc']},
   {title:'Conhecimento financeiro', keys:['con_selic','con_rf_rv','con_diversificacao','con_volatilidade','con_produtos','con_nota']},
@@ -211,19 +225,18 @@ const SECTIONS = [
   {title:'Tributação', keys:['trib_declara','trib_tipo','trib_contador','trib_assessoria','trib_pj']},
   {title:'Relação emocional com dinheiro', keys:['emo_medo','emo_sonho','emo_representa','emo_desentendimento','emo_infancia','emo_conquista','emo_erro']},
   {title:'Expectativas sobre o consultor', keys:['exp_espera','exp_frequencia','com_primeira','com_segunda','exp_relatorio','exp_incomodo']},
-  {title:'Perguntas diferenciais', keys:['dif_sucesso','dif_jamais','dif_arrependimento','dif_reacao','dif_resolver']},
-  {title:'Consentimentos', keys:['cons_verdade','cons_lgpd','cons_compartilhar','cons_contato','cons_nome']},
+  {title:'Consentimentos', keys:['cons_verdade','cons_lgpd','cons_contato','cons_nome']},
 ];
 
 const LABEL_OVERRIDES = {
-  nome:'Nome completo', nascimento:'Data de nascimento', estado_civil:'Estado civil', regime_bens:'Regime de bens',
+  nome:'Nome completo', nascimento:'Data de nascimento', estado_civil:'Estado civil',
   profissao:'Profissão', empresa:'Empresa / ramo', renda:'Renda mensal aproximada', cidade:'Cidade/Estado', email:'E-mail',
   mv_casar:'Pretende se casar?', mv_filhos_qtd:'Filhos', mv_mais_filhos:'Pretende ter mais filhos?', mv_imovel:'Pretende comprar imóvel?',
   mv_imovel_prazo:'Prazo estimado', mv_aposentadoria:'Anos até aposentadoria', mv_mudar_pais:'Pretende mudar de país?',
   mv_carreira:'Pretende trocar de carreira/abrir empresa?', mv_vender_empresa:'Pretende vender empresa?', mv_heranca:'Espera receber herança?', mv_vender_imovel:'Pretende vender imóvel?',
   org_controle:'Possui controle de orçamento?', org_sabe_gasto:'Sabe quanto gasta por mês?', org_sobra:'Sobra dinheiro no fim do mês?', org_sobra_valor:'Valor que sobra',
   org_dividas:'Possui dívidas?', org_dividas_tipo:'Tipos de dívida', org_dividas_juros:'Taxa de juros aproximada', org_rotativo:'Usa rotativo/cheque especial?',
-  fluxo_renda_fixa:'Renda mensal fixa', fluxo_variavel:'Possui renda variável?', fluxo_variavel_valor:'Valor médio variável', fluxo_bonus:'Recebe bônus/PLR?',
+  fluxo_regime_trabalho:'CLT, PJ ou outro?', fluxo_renda_fixa:'Renda mensal fixa', fluxo_variavel:'Possui renda variável?', fluxo_variavel_valor:'Valor médio variável', fluxo_bonus:'Recebe bônus/PLR?',
   fluxo_bonus_valor:'Valor médio bônus', fluxo_passiva:'Recebe dividendos/aluguéis?', fluxo_passiva_valor:'Valor médio passivo', fluxo_despesas:'Despesas fixas mensais',
   fluxo_aporte:'Aporte mensal possível', fluxo_conforto:'Nível de conforto do aporte (1-5)',
   reserva_possui:'Possui reserva de emergência?', reserva_onde:'Onde está aplicada', reserva_meses:'Meses cobertos', reserva_usou:'Já precisou usar?',
@@ -239,11 +252,11 @@ const LABEL_OVERRIDES = {
   suc_testamento:'Possui testamento?', suc_holding:'Pensou em holding?', suc_inventario:'Já passou por inventário?', suc_interesse:'Interesse em organizar sucessão?',
   trib_declara:'Declara IR?', trib_tipo:'Tipo de declaração', trib_contador:'Possui contador?', trib_assessoria:'Recebe assessoria tributária?', trib_pj:'Estrutura de PJ',
   emo_medo:'Maior medo financeiro', emo_sonho:'Maior sonho financeiro', emo_representa:'O que dinheiro representa', emo_desentendimento:'Já brigou por dinheiro?', emo_infancia:'Quem cuidava das finanças na infância', emo_conquista:'Maior conquista financeira', emo_erro:'Maior erro financeiro',
-  exp_espera:'O que espera da consultoria', exp_frequencia:'Frequência de acompanhamento desejada', com_primeira:'Forma de comunicação preferida (1ª opção)', com_segunda:'Forma de comunicação preferida (2ª opção)', exp_relatorio:'Preferência de relatório (1-5)', exp_incomodo:'O que incomodou antes',
-  dif_sucesso:'O que seria sucesso em 5 anos', dif_jamais:'Investimento que jamais faria', dif_arrependimento:'Decisão da qual mais se arrepende', dif_reacao:'Primeira reação em crises', dif_resolver:'Problema que resolveria hoje',
-  cons_verdade:'Confirma veracidade das informações', cons_lgpd:'Autoriza uso de dados (LGPD)', cons_compartilhar:'Autoriza compartilhamento com parceiros', cons_contato:'Autoriza contato', cons_nome:'Assinatura eletrônica',
+  exp_espera:'O que espera da consultoria', exp_frequencia:'Frequência de acompanhamento desejada', com_primeira:'Forma de comunicação preferida (1ª opção)', com_segunda:'Forma de comunicação preferida (2ª opção)', exp_relatorio:'Prefere explicações detalhadas ou resumidas? (1-5)', exp_incomodo:'O que incomodou antes',
+  cons_verdade:'Confirma veracidade das informações', cons_lgpd:'Autoriza uso de dados (LGPD)', cons_contato:'Autoriza contato', cons_nome:'Assinatura eletrônica',
   conf_rentabilidade:'Confirmação sobre rentabilidade', conf_risco:'Confirmação sobre risco'
 };
+
 
 function fmtAnswer(key, val){
   if(val===undefined || val===null || val==='' ) return null;
@@ -289,10 +302,13 @@ async function openDetail(id){
     return `<div class="section"><div class="section-title">${sec.title}</div>${rows}</div>`;
   }).join('');
 
+  const perfil = full.perfilRisco || {};
+
   detail.innerHTML = `
     <button class="detail-close" id="close-detail">✕</button>
     <h2>${escapeHtml(full.nome||'(sem nome)')}</h2>
     <div class="meta">${escapeHtml(full.email||'')} · recebido em ${formatDate(full.createdAt)}</div>
+    <div style="margin:10px 0 4px;">${riskChip(perfil.classificacao, perfil.nota)}</div>
     ${flags.map(f=>`<div class="flag">⚠ ${f}</div>`).join('')}
     ${sectionsHtml}
   `;
